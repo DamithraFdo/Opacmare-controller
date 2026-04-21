@@ -1,0 +1,92 @@
+/*
+ * Damithrafdo from StrydoLabs All Right Reserved | strydolabs@gmail.com | damithrafdo@gmail.com | +94716507322
+ * Alternative solution for Opacmare-transformer platform controller
+ * Hardware: Arduino UNO, MPU6050 gyro sensor, Relay module, Push button
+ * Simulation: https://wokwi.com/projects/461944067471851521
+ * GitHub: https://github.com/DamithraFdo/Opacmare-controller
+ */
+
+/* latching behavior:
+   If it exceeds 7° → turn OFF relay2
+   Keep it OFF until gyroY returns to ~0°
+   Then turn it ON again
+*/
+
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
+
+Adafruit_MPU6050 mpu;
+
+sensors_event_t accel, gyro, temp;
+
+// Pin definitions
+const int button1 = 3;
+const int button2 = 4;
+const int relay1 = 7;
+const int relay2 = 8;
+
+float threshold = 10.0;
+bool relay2Locked = false; // NEW: latch state
+
+void setup(void) {
+  Serial.begin(115200);
+
+  pinMode(button1, INPUT_PULLUP);
+  pinMode(button2, INPUT_PULLUP);
+
+  pinMode(relay1, OUTPUT);
+  pinMode(relay2, OUTPUT);
+
+  digitalWrite(relay1, LOW);
+  digitalWrite(relay2, LOW);
+
+  while (!mpu.begin()) {
+    Serial.println("MPU6050 not connected!");
+    delay(1000);
+  }
+  Serial.println("MPU6050 ready!");
+}
+
+void loop() {
+  mpu.getEvent(&accel, &gyro, &temp);
+
+  bool b1 = (digitalRead(button1) == LOW);
+  bool b2 = (digitalRead(button2) == LOW);
+
+  float gyroY = gyro.gyro.y * 180 / PI;
+
+  Serial.print("Gyro Y: ");
+  Serial.println(gyroY);
+
+  if (b1 && b2) {
+
+    digitalWrite(relay1, HIGH);
+
+    // Step 1: trigger lock when exceeding threshold
+    if (gyroY > threshold) {
+      relay2Locked = true;
+    }
+
+    // Step 2: release lock only when back near 0
+    if (relay2Locked && abs(gyroY) < 0.5) { // small tolerance
+      relay2Locked = false;
+    }
+
+    // Step 3: apply output
+    if (relay2Locked) {
+      digitalWrite(relay2, LOW);   // OFF
+    } else {
+      digitalWrite(relay2, HIGH);  // ON
+    }
+
+  } else {
+    digitalWrite(relay1, LOW);
+    digitalWrite(relay2, LOW);
+
+    // Optional: reset lock when system inactive
+    relay2Locked = false;
+  }
+
+  delay(100);
+}
