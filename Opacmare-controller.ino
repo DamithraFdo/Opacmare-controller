@@ -24,13 +24,13 @@ const int relay2 = 8;
 void setup(void) {
   Serial.begin(115200);
 
-  // Button inputs (using internal pull-up)
+  // Button inputs (using internal pull-up) just GND and Digital pin use karanna
   pinMode(button1, INPUT_PULLUP);
   pinMode(button2, INPUT_PULLUP);
 
-  // Relay outputs
-  pinMode(relay1, OUTPUT);
-  pinMode(relay2, OUTPUT);
+  // Relay outputs (Base and Platform)
+  pinMode(relay1, OUTPUT); //Platform
+  pinMode(relay2, OUTPUT); //Base
 
   // Start with relays OFF
   digitalWrite(relay1, LOW);
@@ -50,14 +50,14 @@ void loop() {
   bool b1 = (digitalRead(button1) == LOW);
   bool b2 = (digitalRead(button2) == LOW);
 
-  float gyroX = gyro.gyro.x * 180 / PI; // convert to deg/s
+  float gyroX = gyro.gyro.x * 180 / PI; // values convert to deg/s
   float gyroY = gyro.gyro.y * 180 / PI;
   float gyroZ = gyro.gyro.z * 180 / PI;
 
-  Serial.print("Gyro X: ");
+  Serial.print("Gyro X: "); 
   Serial.print(gyroX);
   Serial.print(", Y: ");
-  Serial.print(gyroY);
+  Serial.print(gyroY); // I just use gyroY variable for the logic, use Z if need 
   Serial.print(", Z: ");
   Serial.println(gyroZ);
 
@@ -67,14 +67,14 @@ void loop() {
     // Both buttons pressed
     digitalWrite(relay1, HIGH);
 
-    if (gyroY > 3) { //(gyroZ > 3) logic set to 3 degrees
+    if (gyroY > 7) { //(gyroZ > 7) logic set to 7 degrees (Platform line)
       digitalWrite(relay2, LOW);   // turn OFF D8 relay
     } else {
       digitalWrite(relay2, HIGH);  // both ON
     }
 
   } else {
-    // If not both pressed → everything OFF
+    // If not both pressed then everything OFF
     digitalWrite(relay1, LOW);
     digitalWrite(relay2, LOW);
   }
