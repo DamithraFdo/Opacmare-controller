@@ -54,6 +54,8 @@ void loop() {
   float gyroY = gyro.gyro.y * 180 / PI;
   float gyroZ = gyro.gyro.z * 180 / PI;
 
+  float threshold = 7.0; //ona angle limit eka denna
+
   Serial.print("Gyro X: "); 
   Serial.print(gyroX);
   Serial.print(", Y: ");
@@ -67,7 +69,7 @@ void loop() {
     // Both buttons pressed
     digitalWrite(relay1, HIGH);
 
-    if (gyroY > 7) { //(gyroZ > 7) logic set to 7 degrees (Platform line)
+    if (gyroY > threshold) { //(gyroZ > 7) logic set to 7 degrees (Platform line)
       digitalWrite(relay2, LOW);   // turn OFF D8 relay
     } else {
       digitalWrite(relay2, HIGH);  // both ON
