@@ -1,4 +1,4 @@
-/*
+/* latching behavior.ino
  * Damithrafdo from StrydoLabs All Right Reserved | strydolabs@gmail.com | damithrafdo@gmail.com | +94716507322
  * Alternative solution for Opacmare-transformer platform controller
  * Hardware: Arduino UNO, MPU6050 gyro sensor, Relay module, Push button
@@ -17,19 +17,23 @@
 #include <Wire.h>
 
 Adafruit_MPU6050 mpu;
-
 sensors_event_t accel, gyro, temp;
 
-// Pin definitions
+// Pins
 const int button1 = 3;
 const int button2 = 4;
 const int relay1 = 7;
 const int relay2 = 8;
+const int relay3 = 9;
+const int relay4 = 10;
 
-float threshold = 10.0;
-bool relay2Locked = false; // NEW: latch state
+const float threshold = 10.0;
+const float resetThreshold = 0.5;
 
-void setup(void) {
+bool relay2Locked = false;
+bool relay4Locked = false;
+
+void setup() {
   Serial.begin(115200);
 
   pinMode(button1, INPUT_PULLUP);
@@ -37,14 +41,19 @@ void setup(void) {
 
   pinMode(relay1, OUTPUT);
   pinMode(relay2, OUTPUT);
+  pinMode(relay3, OUTPUT);
+  pinMode(relay4, OUTPUT);
 
   digitalWrite(relay1, LOW);
   digitalWrite(relay2, LOW);
+  digitalWrite(relay3, LOW);
+  digitalWrite(relay4, LOW);
 
   while (!mpu.begin()) {
     Serial.println("MPU6050 not connected!");
     delay(1000);
   }
+
   Serial.println("MPU6050 ready!");
 }
 
@@ -59,33 +68,42 @@ void loop() {
   Serial.print("Gyro Y: ");
   Serial.println(gyroY);
 
-  if (b1 && b2) {
-
+  // ---------- BUTTON 1 ----------
+  if (b1) {
     digitalWrite(relay1, HIGH);
 
-    // Step 1: trigger lock when exceeding threshold
     if (gyroY > threshold) {
       relay2Locked = true;
     }
 
-    // Step 2: release lock only when back near 0
-    if (relay2Locked && abs(gyroY) < 0.5) { // small tolerance
+    if (relay2Locked && abs(gyroY) < resetThreshold) {
       relay2Locked = false;
     }
 
-    // Step 3: apply output
-    if (relay2Locked) {
-      digitalWrite(relay2, LOW);   // OFF
-    } else {
-      digitalWrite(relay2, HIGH);  // ON
-    }
-
+    digitalWrite(relay2, relay2Locked ? LOW : HIGH);
   } else {
     digitalWrite(relay1, LOW);
     digitalWrite(relay2, LOW);
-
-    // Optional: reset lock when system inactive
     relay2Locked = false;
+  }
+
+  // ---------- BUTTON 2 ----------
+  if (b2) {
+    digitalWrite(relay3, HIGH);
+
+    if (gyroY > threshold) {
+      relay4Locked = true;
+    }
+
+    if (relay4Locked && abs(gyroY) < resetThreshold) {
+      relay4Locked = false;
+    }
+
+    digitalWrite(relay4, relay4Locked ? LOW : HIGH);
+  } else {
+    digitalWrite(relay3, LOW);
+    digitalWrite(relay4, LOW);
+    relay4Locked = false;
   }
 
   delay(100);
