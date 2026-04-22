@@ -12,6 +12,9 @@
    Then turn it ON again
    If it exceeds -7° → turn OFF relay2
    Keep it OFF until gyroY returns to ~0°
+   NB:  −2≤gyroY≤2
+  This is much more stable than exact zero.
+  Perfect for real sensors.
 
  * Opacmare Controller - MPU6500 Direct I2C Version
 
@@ -37,7 +40,9 @@ const int relay4 = 10;
 // Thresholds
 const float thresholdMax = 10.0;
 const float thresholdMin = -10.0;
-const float resetThreshold = 0.5;
+// Reset zone
+const float resetMin = -5.0;
+const float resetMax = 5.0;
 
 // Relay latch states
 bool relay2Locked = false;
@@ -116,9 +121,9 @@ void loop() {
       relay2Locked = true;
     }
 
-    if (relay2Locked && abs(gyroY) < resetThreshold) {
+    if (relay2Locked && gyroY >= resetMin && gyroY <= resetMax) {
       relay2Locked = false;
-    }
+  }
 
     digitalWrite(relay2, relay2Locked ? LOW : HIGH);
 
@@ -136,7 +141,7 @@ void loop() {
       relay4Locked = true;
     }
 
-    if (relay4Locked && abs(gyroY) < resetThreshold) {
+    if (relay4Locked && gyroY >= resetMin && gyroY <= resetMax) {
       relay4Locked = false;
     }
 
