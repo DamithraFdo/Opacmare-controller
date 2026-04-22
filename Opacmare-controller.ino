@@ -1,4 +1,4 @@
-/*
+/* Opacmare-controller.ino
  * Damithrafdo from StrydoLabs All Right Reserved | strydolabs@gmail.com | damithrafdo@gmail.com | +94716507322
  * Alternative solution for Opacmare-transformer platform controller
  * Hardware: Arduino UNO, MPU6050 gyro sensor, Relay module, Push button
@@ -20,6 +20,8 @@ const int button1 = 3;
 const int button2 = 4;
 const int relay1 = 7;
 const int relay2 = 8;
+const int relay3 = 9;
+const int relay4 = 10;
 
 void setup(void) {
   Serial.begin(115200);
@@ -31,10 +33,13 @@ void setup(void) {
   // Relay outputs (Base and Platform)
   pinMode(relay1, OUTPUT); //Platform
   pinMode(relay2, OUTPUT); //Base
-
+  pinMode(relay3, OUTPUT); 
+  pinMode(relay4, OUTPUT);
   // Start with relays OFF
   digitalWrite(relay1, LOW);
   digitalWrite(relay2, LOW);
+  digitalWrite(relay3, LOW);
+  digitalWrite(relay4, LOW);
 
   while (!mpu.begin()) {
     Serial.println("MPU6050 not connected!");
@@ -65,8 +70,8 @@ void loop() {
 
 
 
-  if (b1 && b2) {
-    // Both buttons pressed
+  if (b1) {
+    // B1 button pressed
     digitalWrite(relay1, HIGH);
 
     if (gyroY > threshold) { //(gyroZ > 7) logic set to 7 degrees (Platform line)
@@ -74,11 +79,21 @@ void loop() {
     } else {
       digitalWrite(relay2, HIGH);  // both ON
     }
+  } else if (b2) {
+    // B2 button pressed
+    digitalWrite(relay3, HIGH);
 
+    if (gyroY > threshold) { //(gyroZ > 7) logic set to 7 degrees (Platform line)
+      digitalWrite(relay4, LOW);   // turn OFF D8 relay
+    } else {
+      digitalWrite(relay4, HIGH);  // both ON
+    }
   } else {
     // If not both pressed then everything OFF
     digitalWrite(relay1, LOW);
     digitalWrite(relay2, LOW);
+    digitalWrite(relay3, LOW);
+    digitalWrite(relay4, LOW);
   }
 
   delay(100);
