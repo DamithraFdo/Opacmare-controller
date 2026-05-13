@@ -1,4 +1,4 @@
-/* main.ino
+/* Self-control.ino
  * Damithrafdo from StrydoLabs All Right Reserved | strydolabs@gmail.com | damithrafdo@gmail.com | +94716507322
  * Alternative solution for Opacmare-transformer platform controller
  * Hardware: Arduino UNO, MPU6050 gyro sensor, Relay module, Push button
@@ -6,7 +6,7 @@
  * GitHub: https://github.com/DamithraFdo/Opacmare-controller
  */
 
- #include <Adafruit_MPU6050.h>
+#include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 
@@ -14,70 +14,58 @@
 Adafruit_MPU6050 mpu;
 sensors_event_t accel, gyro, temp;
 
-// BUTTON PINS
+// PINS
 const int button1 = 3;
 const int button2 = 4;
 
-// RELAY PINS
 const int relay1 = 7;
 const int relay2 = 8;
 const int relay3 = 9;
 const int relay4 = 10;
 
 // ANGLE SETTINGS
-// If angle goes below -7
-// Relay2 activates
 const float negativeLimit = -7.0;
-
-// If angle goes above +7
-// Relay4 activates
 const float positiveLimit = 7.0;
 
-// Ideal balanced zone
 const float resetMin = -3.0;
 const float resetMax = 3.0;
 
-// Complementary filter
 const float alpha = 0.96;
 
 // VARIABLES
 float angleY = 0;
 unsigned long lastTime;
 
-// FUNCTION
-// CONTROL RELAY2 & RELAY4
-void maintainPosition() {
+// POSITION CONTROL FUNCTION
+void maintainPosition(bool systemActive, int activeRelayPin) {
 
-  // TOO MUCH NEGATIVE TILT
+  if (!systemActive) return;
+
+  // TOO LOW (-7)
   // NEED TO GO UP
-  // RELAY2 ON
-  // RELAY4 OFF
-
   if (angleY < negativeLimit) {
 
-    digitalWrite(relay2, HIGH);
+    digitalWrite(activeRelayPin, LOW);   // main relay OFF
+    digitalWrite(relay2, HIGH);         // correction UP
     digitalWrite(relay4, LOW);
   }
 
-  // TOO MUCH POSITIVE TILT
+  // TOO HIGH (+7)
   // NEED TO GO DOWN
-  // RELAY4 ON
-  // RELAY2 OFF
- 
   else if (angleY > positiveLimit) {
 
+    digitalWrite(activeRelayPin, LOW);   // main relay OFF
     digitalWrite(relay2, LOW);
-    digitalWrite(relay4, HIGH);
+    digitalWrite(relay4, HIGH);         // correction DOWN
   }
 
-  // IDEAL POSITION
-  // BOTH OFF
-
-  else if (angleY >= resetMin &&
-           angleY <= resetMax) {
+  // STABLE ZONE (-3 to +3)
+  else if (angleY >= resetMin && angleY <= resetMax) {
 
     digitalWrite(relay2, LOW);
     digitalWrite(relay4, LOW);
+
+    digitalWrite(activeRelayPin, HIGH); // main relay ON again
   }
 }
 
@@ -85,26 +73,22 @@ void setup() {
 
   Serial.begin(115200);
 
-  // BUTTONS
   pinMode(button1, INPUT_PULLUP);
   pinMode(button2, INPUT_PULLUP);
 
-  // RELAYS
   pinMode(relay1, OUTPUT);
   pinMode(relay2, OUTPUT);
   pinMode(relay3, OUTPUT);
   pinMode(relay4, OUTPUT);
 
-  // INITIAL STATES
   digitalWrite(relay1, LOW);
   digitalWrite(relay2, LOW);
   digitalWrite(relay3, LOW);
   digitalWrite(relay4, LOW);
 
-  // START MPU6050
+  // MPU INIT
   while (!mpu.begin()) {
-
-    Serial.println("MPU6050 NOT CONNECTED!");
+    Serial.println("MPU6050 not connected!");
     delay(1000);
   }
 
@@ -115,75 +99,51 @@ void setup() {
 
 void loop() {
 
-  // READ MPU6050
+  // Read sensor
   mpu.getEvent(&accel, &gyro, &temp);
 
-  // DELTA TIME
+  // time delta
   unsigned long currentTime = millis();
-
-  float dt =
-    (currentTime - lastTime) / 1000.0;
-
+  float dt = (currentTime - lastTime) / 1000.0;
   lastTime = currentTime;
 
-  // ACCEL ANGLE
+  // accelerometer angle
   float accAngleY =
     atan2(accel.acceleration.x,
-          accel.acceleration.z)
-    * 180 / PI;
+          accel.acceleration.z) * 180 / PI;
 
-  // GYRO RATE
-  float gyroRateY =
-    gyro.gyro.y * 180 / PI;
+  // gyro rate
+  float gyroRateY = gyro.gyro.y * 180 / PI;
 
-
-  // COMPLEMENTARY FILTER
+  // complementary filter
   angleY =
     alpha * (angleY + gyroRateY * dt)
     + (1 - alpha) * accAngleY;
 
-  // BUTTON STATES
-  bool b1 =
-    (digitalRead(button1) == LOW);
+  // button states
+  bool b1 = (digitalRead(button1) == LOW);
+  bool b2 = (digitalRead(button2) == LOW);
 
-  bool b2 =
-    (digitalRead(button2) == LOW);
-
-  // DEBUG
-  Serial.print("Angle Y : ");
+  // debug
+  Serial.print("Angle Y: ");
   Serial.println(angleY);
 
-  // BUTTON 1
+  // BUTTON 1 SYSTEM
   if (b1) {
-
-    // Relay1 ON
-    digitalWrite(relay1, HIGH);
-
-    // Maintain position
-    maintainPosition();
-
+    maintainPosition(true, relay1);
   } else {
-
     digitalWrite(relay1, LOW);
   }
 
-  // BUTTON 2
+  // BUTTON 2 SYSTEM
   if (b2) {
-
-    // Relay3 ON
-    digitalWrite(relay3, HIGH);
-
-    // Maintain position
-    maintainPosition();
-
+    maintainPosition(true, relay3);
   } else {
-
     digitalWrite(relay3, LOW);
   }
 
-  // NO BUTTONS PRESSED
+  // SAFETY: no buttons pressed
   if (!b1 && !b2) {
-
     digitalWrite(relay2, LOW);
     digitalWrite(relay4, LOW);
   }
